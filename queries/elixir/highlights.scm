@@ -1,32 +1,24 @@
 ; Reserved keywords
 
-; TODO: handle not in
-["when" "and" "or" "not" "in" "fn" "do" "end" "catch" "rescue" "after" "else"] @keyword
-
-; Interpolation
-
-(interpolation
- "#{" @punctuation.special
- (_) @embedded
- "}" @punctuation.special)
+["when" "and" "or" "not" "in" "not in" "fn" "do" "end" "catch" "rescue" "after" "else"] @keyword
 
 ; Operators
 
 ; * doc string
 (unary_operator
-  operator: "@" @attribute
+  operator: "@" @comment.doc
   operand: (call
-    target: (identifier) @doc.__attribute__
+    target: (identifier) @comment.doc.__attribute__
     (arguments
       [
-        (string) @doc
-        (charlist) @doc
+        (string) @comment.doc
+        (charlist) @comment.doc
         (sigil
-          quoted_start: _ @doc
-          quoted_end: _ @doc) @doc
-        (boolean) @doc
+          quoted_start: _ @comment.doc
+          quoted_end: _ @comment.doc) @comment.doc
+        (boolean) @comment.doc
       ]))
-  (#match? @doc.__attribute__ "^(moduledoc|typedoc|doc)$"))
+  (#match? @comment.doc.__attribute__ "^(moduledoc|typedoc|doc)$"))
 
 ; * module attribute
 (unary_operator
@@ -70,15 +62,17 @@
   (float)
 ] @number
 
-(alias) @type
+(alias) @module
 
 (call
   target: (dot
-    left: (atom) @type))
+    left: (atom) @module))
 
 (char) @constant
 
 ; Quoted content
+
+(interpolation "#{" @punctuation.special "}" @punctuation.special) @embedded
 
 (escape_sequence) @string.escape
 
@@ -87,7 +81,7 @@
   (quoted_atom)
   (keyword)
   (quoted_keyword)
-] @constant
+] @string.special.symbol
 
 [
   (string)
@@ -125,28 +119,27 @@
   target: (identifier) @keyword
   (#match? @keyword "^(alias|case|cond|else|for|if|import|quote|raise|receive|require|reraise|super|throw|try|unless|unquote|unquote_splicing|use|with)$"))
 
+; * function call
+(call
+  target: [
+    ; local
+    (identifier) @function
+    ; remote
+    (dot
+      right: (identifier) @function)
+  ])
+
 ; * just identifier in function definition
 (call
   target: (identifier) @keyword
   (arguments
     [
-      (call target: (identifier) @function)
+      (identifier) @function
       (binary_operator
-        left: (call
-               target: (identifier) @function)
+        left: (identifier) @function
         operator: "when")
     ])
   (#match? @keyword "^(def|defdelegate|defguard|defguardp|defmacro|defmacrop|defn|defnp|defp)$"))
-
-; * function call
-(call
-  target: [
-    ; local
-    (identifier) @function.call
-    ; remote
-    (dot
-      right: (identifier) @function.call)
-  ])
 
 ; * pipe into identifier (definition)
 (call
@@ -160,7 +153,7 @@
 ; * pipe into identifier (function call)
 (binary_operator
   operator: "|>"
-  right: (identifier) @function.call)
+  right: (identifier) @function)
 
 ; Identifiers
 
@@ -172,8 +165,8 @@
 
 ; * unused
 (
-  (identifier) @comment
-  (#match? @comment "^_")
+  (identifier) @comment.unused
+  (#match? @comment.unused "^_")
 )
 
 ; * regular
